@@ -26,6 +26,87 @@ let botState = {
   wasThrottled: false,
 };
 
+// --- DÒNG CỦA BẠN VỪA THÊM VÀO ---
+let latestMapPixels = null;
+
+
+// ============================================================
+// CHÈN ĐOẠN XỬ LÝ CAPTCHA VÀO ĐÂY (BƯỚC 2)
+// ============================================================
+
+// 1. API xuất dữ liệu số để giao diện Web đọc
+app.get('/api/captcha-data', (req, res) => {
+  res.json({ pixels: latestMapPixels });
+});
+
+// 2. Trang web riêng biệt hiển thị tấm ảnh Captcha bản đồ
+app.get('/captcha', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>🗺️ Trình Xem Captcha Từ Xa</title>
+      <style>
+        body { background: #121212; color: #ffffff; text-align: center; font-family: sans-serif; padding-top: 40px; margin: 0; }
+        .container { max-width: 400px; margin: 0 auto; background: #1e1e1e; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #333; }
+        h2 { color: #ff9800; margin-bottom: 5px; font-size: 20px; }
+        canvas { border: 4px solid #ff9800; background: #141414; image-rendering: pixelated; width: 280px; height: 280px; border-radius: 6px; margin: 20px 0; }
+        .status { font-size: 13px; color: #888; }
+        .tip { font-size: 12px; color: #aaa; background: #2a2a2a; padding: 8px; border-radius: 6px; line-height: 1.4; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h2>🗺️ CAPTCHA BẢN ĐỒ</h2>
+        <div class="status">Đang kết nối trực tiếp với Bot...</div>
+        <canvas id="captchaCanvas" width="128" height="128"></canvas>
+        <p class="tip">💡 Mẹo: Nhìn kỹ các nét chữ nổi lên. Sau đó quay lại Dashboard chính hoặc vào game gõ lệnh để giải nhé!</p>
+      </div>
+      <script>
+        const canvas = document.getElementById('captchaCanvas');
+        const ctx = canvas.getContext('2d');
+        function updateCaptcha() {
+          fetch('/api/captcha-data')
+            .then(res => res.json())
+            .then(data => {
+              if (!data.pixels || data.pixels.length === 0) {
+                ctx.fillStyle = '#222222';
+                ctx.fillRect(0, 0, 128, 128);
+                ctx.fillStyle = '#666666';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Chưa có captcha...', 64, 68);
+                return;
+              }
+              const imgData = ctx.createImageData(128, 128);
+              for (let i = 0; i < data.pixels.length; i++) {
+                const colorId = data.pixels[i];
+                let r = (colorId * 37) % 256;
+                let g = (colorId * 59) % 256;
+                let b = (colorId * 83) % 256;
+                if (colorId === 0) { r = 20; g = 20; b = 20; }
+                imgData.data[i * 4] = r;
+                imgData.data[i * 4 + 1] = g;
+                imgData.data[i * 4 + 2] = b;
+                imgData.data[i * 4 + 3] = 255;
+              }
+              ctx.putImageData(imgData, 0, 0);
+            })
+            .catch(err => console.error("Lỗi cập nhật ảnh:", err));
+        }
+        setInterval(updateCaptcha, 2000);
+        updateCaptcha();
+      </script>
+    </body>
+    </html>
+  `);
+});
+
+
+// ============================================================
+// ĐOẠN CODE CŨ CỦA BẠN SẼ TIẾP TỤC CHẠY Ở ĐÂY
+// ============================================================
 // Health check endpoint for monitoring
 app.get('/', (req, res) => {
   res.send(`
@@ -1087,7 +1168,7 @@ function formatUptime(seconds) {
 // SELF-PING - Prevent Render from sleeping
 // FIX: only ping if RENDER_EXTERNAL_URL is set (skip useless localhost ping)
 // ============================================================
-const SELF_PING_INTERVAL = 10 * 60 * 1000;
+const SELF_PING_INTERVAL = 3 * 60 * 1000;
 
 function startSelfPing() {
   const renderUrl = process.env.RENDER_EXTERNAL_URL;
@@ -1119,10 +1200,11 @@ setInterval(
   () => {
     const mem = process.memoryUsage();
     const heapMB = (mem.heapUsed / 1024 / 1024).toFixed(2);
-    addLog(`[Memory] Heap: ${heapMB} MB`);
+    // VÔ HIỆU HÓA DÒNG NÀY BẰNG CÁCH THÊM HAI DẤU GẠCH CHÉO Ở ĐẦU:
+    // addLog(`[Memory] Heap: ${heapMB} MB`);
   },
   5 * 60 * 1000,
-);
+); // Đảm bảo cuối đoạn có đóng ngoặc và dấu phẩy/chấm phẩy đầy đủ
 
 // ============================================================
 // BOT CREATION WITH RECONNECTION LOGIC
@@ -1207,6 +1289,7 @@ function createBot() {
 
   try {
     // FIX: use version:false to auto-detect server version so the bot can join any server.
+   // FIX: use version:false to auto-detect server version so the bot can join any server.
     // If the user explicitly sets a version in settings.json it is still respected.
     const botVersion =
       config.server.version && config.server.version.trim() !== ""
@@ -1220,11 +1303,21 @@ function createBot() {
       port: config.server.port,
       version: botVersion,
       hideErrors: false,
-      checkTimeoutInterval: 600000,
+      checkTimeoutInterval: 60000,
     });
 
     bot.loadPlugin(pathfinder);
 
+    // ============================================================
+    // BƯỚC 3: HỨNG DỮ LIỆU BẢN ĐỒ TỪ SERVER MINECRAFT
+    // ============================================================
+    bot.on('map', (id, data) => {
+      if (data && data.colors) {
+        // Copy toàn bộ mảng điểm màu lưu vào biến để giao diện web hút về vẽ ảnh
+        latestMapPixels = Array.from(data.colors);
+        console.log(`[Captcha] Đã bắt được dữ liệu bản đồ mới (ID: ${id})!`);
+      }
+    });
     // FIX: connection timeout - end the old bot before reconnecting to avoid ghost bots
     clearBotTimeouts();
     connectionTimeoutId = setTimeout(() => {
@@ -1853,11 +1946,15 @@ function bedModule(bot, mcData) {
 // Chat module
 // FIX: wire up discord.events.chat flag
 function chatModule(bot) {
+
+  // 1. GHI LOG TIN NHẮN CHAT CỦA NGƯỜI CHƠI
   bot.on("chat", (username, message) => {
     if (!bot || username === bot.username) return;
 
+    // Giữ nguyên nhãn [CHAT] ở đầu dòng
+    addLog(`[CHAT] ${username}: ${message}`);
+
     try {
-      // FIX: send chat events to Discord if enabled
       if (
         config.discord &&
         config.discord.enabled &&
@@ -1881,8 +1978,24 @@ function chatModule(bot) {
       addLog("[Chat] Error:", e.message);
     }
   });
-}
 
+  // 2. GHI LOG LỆNH / HỆ THỐNG (CHỈ XÓA CHỮ ERROR, GIỮ LẠI CHỮ SYSTEM)
+  bot.on("message", (jsonMsg) => {
+    if (!bot) return;
+
+    const textStr = jsonMsg.toString().trim();
+
+    if (!textStr || textStr.startsWith(`<${bot.username}>`)) return;
+    if (textStr.match(/^<.+>/) || textStr.includes(" : ")) return;
+
+    const isChat = jsonMsg.translate && jsonMsg.translate.startsWith('chat.');
+
+    if (!isChat) {
+      // Đã xóa chữ [ERROR], giữ lại nguyên vẹn nhãn [SYSTEM] cho bạn
+      addLog(`[SYSTEM] ${textStr}`);
+    }
+  });
+}
 // ============================================================
 // CONSOLE COMMANDS
 // ============================================================
