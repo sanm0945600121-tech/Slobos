@@ -1,13 +1,13 @@
 {
   "name": "AFK Bot",
   "bot-account": {
-    "username": "tuila",
+    "username": "GH807",
     "password": "",
     "type": "offline"
   },
   "server": {
-    "ip": "vietbox.asia",
-    "port": 25225,
+    "ip": "Beautiful_Life.aternos.me",
+    "port": 16126,
     "version": "",
     "try-creative": false
   },
