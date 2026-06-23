@@ -1,13 +1,13 @@
 {
   "name": "AFK Bot",
   "bot-account": {
-    "username": "GH807",
+    "username": "tuila",
     "password": "",
     "type": "offline"
   },
   "server": {
-    "ip": "Beautiful_Life.aternos.me",
-    "port": 16126,
+    "ip": "bucket.pikamc.vn",
+    "port": 25129,
     "version": "",
     "try-creative": false
   },
@@ -20,7 +20,7 @@
   "utils": {
     "auto-auth": {
       "enabled": true,
-      "password": ""
+      "password": "123123123"
     },
     "anti-afk": {
       "enabled": true,
