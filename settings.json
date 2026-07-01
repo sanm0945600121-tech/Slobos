@@ -1,7 +1,7 @@
 {
   "name": "AFK Bot",
   "bot-account": {
-    "username": "GHreal",
+    "username": "GHbot",
     "password": "",
     "type": "offline"
   },
@@ -76,7 +76,7 @@
     "events": {
       "connect": true,
       "disconnect": true,
-      "chat": false
+      "chat": true
     }
   },
   "chat": {
