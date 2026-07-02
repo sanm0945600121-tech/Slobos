@@ -27,9 +27,9 @@
       "sneak": false
     },
     "chat-messages": {
-      "enabled": false,
+      "enabled": true,
       "repeat": true,
-      "repeat-delay": 120,
+      "repeat-delay": 15,
       "messages": [
       "/skipnight",
       "/skipnight",
